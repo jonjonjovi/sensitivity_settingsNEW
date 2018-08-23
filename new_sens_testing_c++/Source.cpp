@@ -34,8 +34,14 @@ extern "C" NTSTATUS NTSYSAPI NTAPI NtQueryInformationFile(
 	_In_  ULONG                  Length,
 	_In_  FILE_INFORMATION_CLASS FileInformationClass);
 
+void printout();
 int main(int argc,char* argv[])
 {
+	if (argc < 3 || argc>=5)
+	{
+		printout();
+		return EXIT_FAILURE;
+	}
 
 	std::string val = argv[2];
 	std::wstring stemp = std::wstring(val.begin(), val.end());
@@ -59,18 +65,13 @@ int main(int argc,char* argv[])
 	}
 	
 	IO_STATUS_BLOCK iob;
-	//FILE_CASE_SENSITIVE_INFORMATION file_cs = { FILE_CS_FLAG_CASE_SENSITIVE_DIR };
 
 	FILE_CASE_SENSITIVE_INFORMATION file_cs;
-	std::string action = argv[1];
 	
+	std::string action = argv[1];
 
-	if (action == "Query" || action == "query")
+    if ((action == "Query" || action == "query") && (argv[3] == NULL))
 	{
-		//IO_STATUS_BLOCK iob;
-		//FILE_CASE_SENSITIVE_INFORMATION file_cs = { FILE_CS_FLAG_CASE_SENSITIVE_DIR };
-
-		//FILE_CASE_SENSITIVE_INFORMATION file_cs;
 		NTSTATUS status = NtQueryInformationFile(
 			d,
 			&iob,
@@ -78,12 +79,6 @@ int main(int argc,char* argv[])
 			sizeof file_cs,
 			FileCaseSensitiveInformation);
 
-		/*NTSTATUS status = NtSetInformationFile(
-			d,
-			&iob,
-			&file_cs,
-			sizeof file_cs,
-			FileCaseSensitiveInformation);*/
 		switch (file_cs.Flags)
 		{
 		case 0:
@@ -93,7 +88,6 @@ int main(int argc,char* argv[])
 			std::cout << "Case sensitivity is enabled" << std::endl;
 			break;
 		}
-		//std::cout << file_cs.Flags << std::endl;
 		if (NT_ERROR(status))
 		{
 			const auto err = ::RtlNtStatusToDosError(status);
@@ -103,43 +97,60 @@ int main(int argc,char* argv[])
 		}
 
 	}
-	else if (action == "Set" || action == "set")
+	else if ((action == "Set" || action == "set" ) && (argv[3] != NULL))
 	{
-		if (argv[3] != NULL)
+		
+		std::string set_v = argv[3];
+		
+		if (set_v == "Enable" || set_v == "enable")
 		{
-			//std::string set_v = argv[3];
-			if (1)
-			{
-				FILE_CASE_SENSITIVE_INFORMATION file_cs = { FILE_CS_FLAG_CASE_SENSITIVE_DIR };
-			}
-			/*else if (set_v == "Disable" || set_v == "disable")
-			{
-				FILE_CASE_SENSITIVE_INFORMATION file_cs = {0};
-			}
-			else
-			{
-				std::cout << "Invalid parameters" << std::endl;
-				return EXIT_FAILURE;
-			}*/
-
-			NTSTATUS status = NtSetInformationFile(
-				d,
-				&iob,
-				&file_cs,
-				sizeof file_cs,
-				FileCaseSensitiveInformation);
-
-			if (NT_ERROR(status))
-			{
-				const auto err = ::RtlNtStatusToDosError(status);
-
-				std::cout << "NtSetInformationFile failed: " << std::system_category().message(err).c_str() << std::endl;
-				return EXIT_FAILURE;
-			}
+		    file_cs = { FILE_CS_FLAG_CASE_SENSITIVE_DIR };
 		}
+		
+		else if (set_v == "Disable" || set_v == "disable")
+		{
+			file_cs = {0};
+		}
+		else
+		{
+			std::cout << set_v <<" is an invalid parameter" << std::endl;
+			std::cout <<"----Set Commands Supported ----"<<std::endl;
+			std::cout << "enable\tTurn on case sensitivity" << std::endl;
+			std::cout << "disable\tTurn off case sensitivity" << std::endl;
+			return EXIT_FAILURE;
+		}
+
+		NTSTATUS status = NtSetInformationFile(
+			d,
+			&iob,
+			&file_cs,
+			sizeof file_cs,
+			FileCaseSensitiveInformation);
+
+		if (NT_ERROR(status))
+		{
+			const auto err = ::RtlNtStatusToDosError(status);
+
+			std::cout << "NtSetInformationFile failed: " << std::system_category().message(err).c_str() << std::endl;
+			return EXIT_FAILURE;
+		}
+		
 	}
-	else 
+	else
 	{
-		std::cout <<"Tool for editing case sensitivity"<<std::endl;
+		printout();
+		return EXIT_FAILURE;
 	}
+	
+}
+void printout()
+{
+	std::cout << "\nTool which can query and edit the case sensitivity flag on a target directory" << std::endl;
+	std::cout << "\n---- Commands Supported ----\n" << std::endl;
+	std::cout << "query\ttest case sensitivity" << std::endl;
+	std::cout << "Example:" << std::endl;
+	std::cout << "\tcase_sens query directorypath\n" << std::endl;
+	std::cout << "set\tmanipulate case sensitivity" << std::endl;
+	std::cout << "Example:" << std::endl;
+	std::cout << "\tcase_sens set directorypath enable/disable" << std::endl;
 }
